@@ -4,7 +4,7 @@ import os
 import io
 import concurrent.futures
 
-TOKEN = "YOUR_TOKEN_HERE"
+TOKEN = "7679134239:AAEvzmtJTZPSzDF1-bYrNcJsxlcRrENwpbA"
 bot = telebot.TeleBot(TOKEN)
 
 TEMP_FOLDER = "temp_audio"
