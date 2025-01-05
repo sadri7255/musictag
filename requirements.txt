@@ -1,0 +1,5 @@
+pydub==0.25.1
+python-telegram-bot==21.9
+pyTelegramBotAPI
+pydub
+ffmpeg-python
