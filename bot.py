@@ -3,10 +3,19 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 from pydub import AudioSegment
 import os
 import io
+import gspread
+from oauth2client.service_account import ServiceAccountCredentials
+import json
 
-TOKEN = "7197743010:AAF8kYM5tcFsfShRpyUmevS0BkrV2osPQ5I"  # توکن ربات شما
+# توکن ربات شما
+TOKEN = "7197743010:AAF8kYM5tcFsfShRpyUmevS0BkrV2osPQ5I"
 bot = telebot.TeleBot(TOKEN)
 
+# تنظیمات Google Sheets
+SPREADSHEET_ID = "1uCYP6-fwmcvYEvfqAz53U9OJmHQ2N2A86TmnJNpVNO4"  # ID گوگل شیت شما
+SHEET_NAME = "Sheet1"  # نام شیت مورد نظر
+
+# تنظیمات ربات
 TEMP_FOLDER = "temp_audio"
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 
@@ -16,13 +25,36 @@ user_states = {}
 STATE_WAITING_AUDIO = "waiting_audio"
 STATE_WAITING_OPTIONS = "waiting_options"
 
-# فایل برای ذخیره اطلاعات کاربران
-USER_FILE = "userid.txt"
+# تابع برای ایجاد credentials از Environment Variables
+def create_credentials_from_env():
+    credentials = {
+        "type": os.getenv("GOOGLE_TYPE"),
+        "project_id": os.getenv("GOOGLE_PROJECT_ID"),
+        "private_key_id": os.getenv("GOOGLE_PRIVATE_KEY_ID"),
+        "private_key": os.getenv("GOOGLE_PRIVATE_KEY").replace("\\n", "\n"),
+        "client_email": os.getenv("GOOGLE_CLIENT_EMAIL"),
+        "client_id": os.getenv("GOOGLE_CLIENT_ID"),
+        "auth_uri": os.getenv("GOOGLE_AUTH_URI"),
+        "token_uri": os.getenv("GOOGLE_TOKEN_URI"),
+        "auth_provider_x509_cert_url": os.getenv("GOOGLE_AUTH_PROVIDER_X509_CERT_URL"),
+        "client_x509_cert_url": os.getenv("GOOGLE_CLIENT_X509_CERT_URL"),
+        "universe_domain": os.getenv("GOOGLE_UNIVERSE_DOMAIN")
+    }
+    return credentials
 
-# تابع برای ذخیره اطلاعات کاربر
-def save_user_info(user_id, username):
-    with open(USER_FILE, "a") as file:
-        file.write(f"User ID: {user_id}, Username: {username}\n")
+# تابع برای اتصال به Google Sheets
+def connect_to_google_sheets():
+    scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
+    credentials = create_credentials_from_env()
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(credentials, scope)
+    client = gspread.authorize(creds)
+    sheet = client.open_by_key(SPREADSHEET_ID).sheet1  # استفاده از اولین شیت
+    return sheet
+
+# تابع برای ذخیره اطلاعات کاربر در Google Sheets
+def save_user_info_to_sheet(user_id, username):
+    sheet = connect_to_google_sheets()
+    sheet.append_row([user_id, username])  # اضافه کردن اطلاعات به انتهای شیت
 
 # دستور شروع
 @bot.message_handler(commands=['start', 'help'])
@@ -30,8 +62,8 @@ def send_welcome(message):
     user_id = message.chat.id
     username = message.chat.username or "Unknown"
     
-    # ذخیره اطلاعات کاربر
-    save_user_info(user_id, username)
+    # ذخیره اطلاعات کاربر در Google Sheets
+    save_user_info_to_sheet(user_id, username)
     
     user_states[user_id] = {"state": STATE_WAITING_AUDIO}
     bot.send_message(user_id, "👋 سلام! لطفاً فایل صوتی خود را ارسال کنید.")
